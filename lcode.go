@@ -1,12 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/shynome/httprelay-go"
 )
@@ -18,12 +20,24 @@ func main() {
 	initProxy(proxy)
 	initWebdav(http.DefaultServeMux)
 
-	pwd, _ := os.Getwd()
 	var codedir = "."
-	if len(os.Args) >= 2 {
-		codedir = os.Args[1]
+	flag.Parse()
+	var args = flag.Args()
+	if len(args) >= 1 {
+		codedir = args[0]
 	}
-	codedir = filepath.Join(pwd, codedir)
+	if strings.HasPrefix(codedir, "~") {
+		homedir, err := os.UserHomeDir()
+		if err != nil {
+			panic(err)
+		}
+		codedir = strings.Replace(codedir, "~", homedir, 1)
+	}
+	var err error
+	codedir, err = filepath.Abs(codedir)
+	if err != nil {
+		panic(err)
+	}
 
 	db.Allow(codedir)
 	defer db.Deny(codedir)
