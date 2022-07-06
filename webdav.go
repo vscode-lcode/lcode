@@ -45,7 +45,6 @@ func initWebdav(mux *http.ServeMux) {
 			}
 			hprefix = ss[0] + prefix
 			r.URL.Path = ss[0] + r.URL.Path
-			fmt.Println(ss[0])
 		}
 		srv := &webdav.Handler{
 			FileSystem: fs,
