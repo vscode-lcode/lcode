@@ -19,9 +19,14 @@ func init() {
 		LCODE_CONNECT = c
 	}
 
+	var err error
 	lcodeTmpdir := filepath.Join(os.TempDir(), "lcode-nuts")
+	err = os.MkdirAll(lcodeTmpdir, 0777)
+	if err != nil {
+		panic(err)
+	}
 	db = table.New(lcodeTmpdir)
-	err := db.Open()
+	err = db.Open()
 	if err != nil {
 		panic(err)
 	}
