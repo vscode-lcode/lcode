@@ -44,6 +44,14 @@ func main() {
 
 	vscodeLink := genVscodeLink(proxy.Auth.ID, path.Join("/dav/", codedir))
 
+	stat, err := os.Stat(codedir)
+	if err != nil {
+		fmt.Println("can't get file stat")
+		return
+	}
+	if !stat.IsDir() {
+		vscodeLink += "#file"
+	}
 	fmt.Println(vscodeLink)
 	// go reqOpen(vscodeLink)
 	go proxy.Serve(nil)
