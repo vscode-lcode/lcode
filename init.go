@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,14 +12,25 @@ import (
 
 var LCODE_CONNECT string = "http://127.0.0.1:4349"
 
-var db *table.Table
+var args struct {
+	Connect string
+}
 
 func init() {
+	defer initDB()
+
 	c := os.Getenv("LCODE_CONNECT")
 	if c != "" {
 		LCODE_CONNECT = c
 	}
 
+	flag.StringVar(&args.Connect, "c", LCODE_CONNECT, "the lcode hub connect addr")
+
+}
+
+var db *table.Table
+
+func initDB() {
 	var err error
 	lcodeTmpdir := filepath.Join(os.TempDir(), "lcode-nuts")
 	err = os.MkdirAll(lcodeTmpdir, 0777)

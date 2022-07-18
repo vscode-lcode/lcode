@@ -14,9 +14,11 @@ import (
 )
 
 func main() {
+	flag.Parse()
+
 	defer db.Dispose()
 
-	proxy := httprelay.NewProxy(LCODE_CONNECT)
+	proxy := httprelay.NewProxy(args.Connect)
 	initProxy(proxy)
 	initWebdav(http.DefaultServeMux)
 
@@ -42,7 +44,12 @@ func main() {
 	db.Allow(codedir)
 	defer db.Deny(codedir)
 
-	vscodeLink := genVscodeLink(proxy.Auth.ID, path.Join("/dav/", codedir))
+	p := proxy.Auth.ID + path.Join("/dav/", codedir)
+	vscodeLink, err := getOpenLink(p)
+	if err != nil {
+		fmt.Printf("get vscode open link failed. err: %e\n", err)
+		return
+	}
 
 	stat, err := os.Stat(codedir)
 	if err != nil {
