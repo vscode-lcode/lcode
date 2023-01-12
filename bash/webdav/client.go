@@ -68,6 +68,7 @@ func (c *Client) Open(r *bufio.Reader) (err error) {
 		c.log(fmt.Errorf("bash client start failed: %w", err))
 	})
 	To(c.parseArgs(r))
+	To(c.initServerAddr())
 	To(c.initID(r))
 	To(c.initPWD(r))
 	go c.tasks.Start()
@@ -75,17 +76,23 @@ func (c *Client) Open(r *bufio.Reader) (err error) {
 	return
 }
 
+func (c *Client) intFlag() *flag.FlagSet {
+	f := flag.NewFlagSet("lcode", flag.ContinueOnError)
+	f.StringVar(&c.PWD, "pwd", ".", "工作目录")
+	f.StringVar(&c.ServerAddr, "server", c.conn.LocalAddr().String(), "server addr")
+	return f
+}
 func (c *Client) parseArgs(r *bufio.Reader) (err error) {
 	defer err2.Handle(&err, func() {
 		c.log(fmt.Errorf("parse lcode args failed: %w", err))
 	})
 	To1(io.WriteString(c.conn, "echo $@\n"))
 	line, _ := To2(r.ReadLine())
-	f := flag.NewFlagSet("lcode", flag.ContinueOnError)
+
+	f := c.intFlag()
 	var output bytes.Buffer
 	f.SetOutput(&output)
-	f.StringVar(&c.PWD, "pwd", ".", "工作目录")
-	f.StringVar(&c.ServerAddr, "server", c.localAddr(), "server addr")
+
 	if err = f.Parse(strings.Split(string(line), " ")); err != nil {
 		err = fmt.Errorf("print help")
 		output := strings.ReplaceAll(string(output.Bytes()), "\n", "\nlo: ")
@@ -93,16 +100,20 @@ func (c *Client) parseArgs(r *bufio.Reader) (err error) {
 		To1(io.WriteString(c.conn, cmd))
 		return
 	}
+
 	if f.Arg(0) != "" {
 		f.Set("pwd", f.Arg(0))
 	}
 	return
 }
 
-func (c *Client) localAddr() string {
-	laddr := c.conn.LocalAddr()
-	addr := To1(net.ResolveTCPAddr(laddr.Network(), laddr.String()))
-	return fmt.Sprintf("127.0.0.1/%d", addr.Port)
+func (c *Client) initServerAddr() (err error) {
+	defer err2.Handle(&err, func() {
+		err = ErrServerAddrParseFailed
+	})
+	addr := To1(net.ResolveTCPAddr("tcp", c.ServerAddr))
+	c.ServerAddr = fmt.Sprintf("%s/%d", addr.IP.String(), addr.Port)
+	return
 }
 
 func (c *Client) initID(r *bufio.Reader) (err error) {
