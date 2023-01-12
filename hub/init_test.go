@@ -5,15 +5,15 @@ import (
 	"time"
 
 	. "github.com/lainio/err2/try"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/vscode-lcode/lcode/v2/bash"
-	_ "modernc.org/sqlite"
 	"xorm.io/xorm"
 )
 
 var hub *Hub
 
 func init() {
-	eg := To1(xorm.NewEngine("sqlite", "./lcode.db"))
+	eg := To1(xorm.NewEngine("sqlite3", "./lcode.db"))
 	To(Sync(eg))
 
 	l := To1(net.Listen("tcp", ":0"))

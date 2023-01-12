@@ -14,10 +14,10 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/vscode-lcode/lcode/v2/bash"
 	"github.com/vscode-lcode/lcode/v2/bash/webdav"
 	"github.com/vscode-lcode/lcode/v2/hub"
-	_ "modernc.org/sqlite"
 	"xorm.io/xorm"
 )
 
@@ -44,7 +44,7 @@ func main() {
 
 	lcodeDir := filepath.Join(To1(os.UserHomeDir()), ".config", "lcode/")
 	To(os.MkdirAll(lcodeDir, os.ModePerm))
-	db := To1(xorm.NewEngine("sqlite", filepath.Join(lcodeDir, "lcode.db")))
+	db := To1(xorm.NewEngine("sqlite3", filepath.Join(lcodeDir, "lcode.db")))
 	To(hub.Sync(db))
 
 	l := To1(net.Listen("tcp", args.addr))
