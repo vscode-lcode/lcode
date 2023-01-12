@@ -15,14 +15,14 @@ webdav server over bash
 直接调用
 
 ```sh
->/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -E ^lo: >&2) bash -i -s
+>/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -E ^lo: >&2) bash +o history -i -s
 ```
 
 设置`alias`
 
 ```sh
 # 服务器写入别名, 方便调用
-echo "alias lcode='>/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -E ^lo: >&2) bash -i -s'" >> ~/.bashrc
+echo "alias lcode='>/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -E ^lo: >&2) bash +o history -i -s'" >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -39,9 +39,9 @@ debug
 
 ```sh
 # 只输出执行的命令
->/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -vE '^\[' >&2) bash -i -s
+>/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -vE '^\[' >&2) bash +o history -i -s
 # 输出所有 stderr
->/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(cat >&2) bash -i -s
+>/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(cat >&2) bash +o history -i -s
 ```
 
 ## 安装/设置 (本机)
