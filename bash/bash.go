@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/SierraSoftworks/multicast/v2"
+	"github.com/alessio/shellescape"
 	"github.com/google/uuid"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/lainio/err2"
@@ -100,13 +101,18 @@ func (sh *Bash) serve(conn net.Conn) (err error) {
 }
 
 func (sh *Bash) Connect(r *bufio.Reader, conn net.Conn) (err error) {
+	defer conn.Close()
 	defer err2.Handle(&err, func() {
 		if errors.Is(err, io.EOF) {
 			return
 		}
+		if errors.Is(err, webdav.ErrNeedPrint) {
+			cmd := fmt.Sprintf(">&2 echo lo: %s\n", shellescape.Quote(err.Error()))
+			io.WriteString(conn, cmd)
+			return
+		}
 		fmt.Println("client connect", err)
 	})
-	defer conn.Close()
 
 	io.WriteString(conn, "export PS1=''\n")
 
