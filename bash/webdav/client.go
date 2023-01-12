@@ -80,6 +80,7 @@ func (c *Client) intFlag() *flag.FlagSet {
 	f := flag.NewFlagSet("lcode", flag.ContinueOnError)
 	f.StringVar(&c.PWD, "pwd", ".", "工作目录")
 	f.StringVar(&c.ServerAddr, "server", c.conn.LocalAddr().String(), "server addr")
+	f.Bool("x", true, "仅用以分割bash参数, 不作其他用途")
 	return f
 }
 func (c *Client) parseArgs(r *bufio.Reader) (err error) {
