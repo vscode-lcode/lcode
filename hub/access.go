@@ -29,7 +29,7 @@ func (hub *Hub) UpdateAllowedDir(client Client) (err error) {
 	dirs := make([]Client, 0)
 	host := client.ToHost()
 	q := builder.Eq{"no": host.No, "namespace": host.Namespace}
-	To(hub.db.Where(q).Desc("workdir").Find(&dirs))
+	To(hub.clientDB.Where(q).Desc("workdir").Find(&dirs))
 	hub.allowedDirs.Set(host.String(), dirs, ttlcache.NoTTL)
 	return
 }

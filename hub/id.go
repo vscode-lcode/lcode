@@ -56,11 +56,7 @@ func (hub *Hub) addHost(host *Host) (err error) {
 }
 
 func (hub *Hub) addClient(client *Client) (err error) {
-	defer err2.Handle(&err)
-	session := hub.db.NewSession()
-	defer session.Close()
-	To1(session.Insert(client))
-	To(session.Commit())
+	_, err = hub.clientDB.Insert(client)
 	return
 }
 
@@ -95,7 +91,7 @@ func (id Client) Close() (err error) {
 	if id.hub == nil {
 		return
 	}
-	To1(id.hub.db.ID(id.Id).Delete(new(Client)))
+	To1(id.hub.clientDB.ID(id.Id).Delete(new(Client)))
 	To(id.hub.UpdateAllowedDir(id))
 	return
 }
