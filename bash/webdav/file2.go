@@ -76,7 +76,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 	f.readerInit.Do(func() {
-		cmd := fmt.Sprintf("dd status=none if=%s skip=%d", shellescape.Quote(f.name), f.cursor)
+		cmd := fmt.Sprintf("dd if=%s skip=%d", shellescape.Quote(f.name), f.cursor)
 		cmd = fmt.Sprintf("%s %s", cmd, "iflag=skip_bytes")
 		f.reader, f.readerInitErr = f.c.Exec(cmd)
 	})
@@ -94,7 +94,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 		fmt.Println("write err:", err)
 	})
 	f.writerInit.Do(func() {
-		cmd := fmt.Sprintf("dd status=none of=%s seek=%d", shellescape.Quote(f.name), f.cursor)
+		cmd := fmt.Sprintf("dd of=%s seek=%d", shellescape.Quote(f.name), f.cursor)
 		cmd = fmt.Sprintf("%s %s", cmd, "oflag=seek_bytes")
 		f.writer, f.writerInitErr = f.c.Exec(cmd)
 	})
