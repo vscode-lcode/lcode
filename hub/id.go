@@ -64,11 +64,6 @@ func (hub *Hub) addClient(client *Client) (err error) {
 	return
 }
 
-func (hub *Hub) CleanClients() (err error) {
-	_, err = hub.db.Where("1=1").Delete(new(Client))
-	return
-}
-
 // 05671-anystring
 var idRawRegexp = regexp.MustCompile(`^(\d+)-(.+)$`)
 

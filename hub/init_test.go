@@ -20,7 +20,6 @@ func init() {
 	sh := bash.NewBash()
 
 	hub = New(eg, sh)
-	To(hub.CleanClients())
 
 	go func() {
 		To(sh.Serve(l))

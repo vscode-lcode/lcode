@@ -71,7 +71,6 @@ func main() {
 
 	hub := hub.New(db, bash)
 	hub.LocalDomain = args.localdomain
-	To(hub.CleanClients())
 
 	go http.Serve(net.Listener(bash), hub)
 	To(bash.Serve(l))
