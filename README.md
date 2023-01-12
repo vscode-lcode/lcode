@@ -12,26 +12,35 @@ webdav server over bash
 
 #### 用法 (在服务器上)
 
-直接用调用
+直接调用
 
 ```sh
 >/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -E ^lo: >&2) bash -i -s
 ```
 
-设置`alias`后通过`lcode`调用
+设置`alias`
 
 ```sh
 # 服务器写入别名, 方便调用
 echo "alias lcode='>/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -E ^lo: >&2) bash -i -s'" >> ~/.bashrc
 source ~/.bashrc
+```
+
+通过`lcode`调用
+
+```sh
 # 打开webdav目录
 lcode
 # 输出编辑器链接, 点击打开编辑器进行编辑
 lo: vscode://lcode.hub/shy-drone-f0_f0_f0_f0_f0_f0/root
+```
 
-# debug 只输出执行的命令
+debug
+
+```sh
+# 只输出执行的命令
 >/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(grep -vE '^\[' >&2) bash -i -s
-# debug 输出所有 stderr
+# 输出所有 stderr
 >/dev/tcp/127.0.0.1/4349 0> >(echo 0) 0>&1  2> >(cat >&2) bash -i -s
 ```
 
@@ -43,7 +52,7 @@ lo: vscode://lcode.hub/shy-drone-f0_f0_f0_f0_f0_f0/root
 wget -O lcode-hub https://xxxxxx/ && chmod +x lcode-hub && sudo mv lcode-hub /usr/local/bin/
 ```
 
-## 从源码 build
+### 从源码 build
 
 ```sh
 make build
