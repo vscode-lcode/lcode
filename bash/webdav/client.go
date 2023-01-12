@@ -2,15 +2,19 @@ package webdav
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/SierraSoftworks/multicast/v2"
+	"github.com/alessio/shellescape"
 	"github.com/google/uuid"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/lainio/err2"
@@ -22,7 +26,7 @@ type Client struct {
 	ID    string
 	tasks *ttlcache.Cache[string, chan net.Conn]
 
-	PWD    string
+	PWD    string // 也有可能是文件, 用途是用于限制文件访问
 	Logger func(file *File, err error)
 	closed *multicast.Channel[any]
 
@@ -63,7 +67,7 @@ func (c *Client) Open(r *bufio.Reader) (err error) {
 	defer err2.Handle(&err, func() {
 		c.log(fmt.Errorf("bash client start failed: %w", err))
 	})
-	To(c.initServerAddr(r))
+	To(c.parseArgs(r))
 	To(c.initID(r))
 	To(c.initPWD(r))
 	go c.tasks.Start()
@@ -71,26 +75,42 @@ func (c *Client) Open(r *bufio.Reader) (err error) {
 	return
 }
 
-func (c *Client) initServerAddr(r *bufio.Reader) (err error) {
+func (c *Client) parseArgs(r *bufio.Reader) (err error) {
 	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("init server addr failed: %w", err))
+		c.log(fmt.Errorf("parse lcode args failed: %w", err))
 	})
-	io.WriteString(c.conn, "echo $2\n")
+	To1(io.WriteString(c.conn, "echo $@\n"))
 	line, _ := To2(r.ReadLine())
-	c.ServerAddr = string(line)
-	if c.ServerAddr == "" {
-		laddr := c.conn.LocalAddr()
-		addr := To1(net.ResolveTCPAddr(laddr.Network(), laddr.String()))
-		c.ServerAddr = fmt.Sprintf("127.0.0.1/%d", addr.Port)
+	f := flag.NewFlagSet("lcode", flag.ContinueOnError)
+	var output bytes.Buffer
+	f.SetOutput(&output)
+	f.StringVar(&c.PWD, "pwd", ".", "工作目录")
+	f.StringVar(&c.ServerAddr, "server", c.localAddr(), "server addr")
+	if err = f.Parse(strings.Split(string(line), " ")); err != nil {
+		err = fmt.Errorf("print help")
+		output := strings.ReplaceAll(string(output.Bytes()), "\n", "\nlo: ")
+		cmd := fmt.Sprintf(">&2 echo lo: %s\n", shellescape.Quote(output))
+		To1(io.WriteString(c.conn, cmd))
+		return
+	}
+	if f.Arg(0) != "" {
+		f.Set("pwd", f.Arg(0))
 	}
 	return
+}
+
+func (c *Client) localAddr() string {
+	laddr := c.conn.LocalAddr()
+	addr := To1(net.ResolveTCPAddr(laddr.Network(), laddr.String()))
+	return fmt.Sprintf("127.0.0.1/%d", addr.Port)
 }
 
 func (c *Client) initID(r *bufio.Reader) (err error) {
 	defer err2.Handle(&err, func() {
 		c.log(fmt.Errorf("got default init id failed: %w", err))
 	})
-	io.WriteString(c.conn, "echo $(2>/dev/null dd if=~/.lcode-id || echo 0)-$(2>/dev/null dd if=/proc/sys/kernel/hostname)\n")
+	cmd := "echo $(2>/dev/null dd if=~/.lcode-id || echo 0)-$(2>/dev/null dd if=/proc/sys/kernel/hostname)\n"
+	To1(io.WriteString(c.conn, cmd))
 	line, _ := To2(r.ReadLine())
 	c.ID = string(line)
 	return
@@ -98,7 +118,7 @@ func (c *Client) initID(r *bufio.Reader) (err error) {
 
 func (c *Client) StoreID(id string) (err error) {
 	cmd := fmt.Sprintf("echo -n %s > ~/.lcode-id\n", id)
-	io.WriteString(c.conn, cmd)
+	_, err = io.WriteString(c.conn, cmd)
 	return
 }
 
@@ -106,9 +126,21 @@ func (c *Client) initPWD(r *bufio.Reader) (err error) {
 	defer err2.Handle(&err, func() {
 		c.log(fmt.Errorf("init pwd failed: %w", err))
 	})
-	io.WriteString(c.conn, "cd $1;pwd\n")
+	cmd := fmt.Sprintf("TZ=UTC0 ls -Ald --full-time %s || echo /dev/null | head -n 1\n", shellescape.Quote(c.PWD))
+	To1(io.WriteString(c.conn, cmd))
 	line, _ := To2(r.ReadLine())
-	c.PWD = string(line)
+	if string(line) == "/dev/null" {
+		err = ErrEditTargetNotExists
+		return
+	}
+	f := parseLsLine(line)
+	if strings.HasPrefix(f.sys[7], "/") {
+		c.PWD = f.sys[7]
+		return
+	}
+	To1(io.WriteString(c.conn, "pwd\n"))
+	pwd, _ := To2(r.ReadLine())
+	c.PWD = filepath.Join(string(pwd), f.name)
 	return
 }
 
