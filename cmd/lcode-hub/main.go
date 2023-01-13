@@ -80,7 +80,7 @@ func main() {
 func hasRunning(addr string) (err error) {
 	defer err2.Handle(&err)
 	client := http.Client{Timeout: 2 * time.Second}
-	resp := To1(client.Get(fmt.Sprintf("http://%s/%s", addr, "version")))
+	resp := To1(client.Get(fmt.Sprintf("http://%s/version", addr)))
 	defer resp.Body.Close()
 	r := bufio.NewReader(resp.Body)
 	line, _ := To2(r.ReadLine())
