@@ -74,7 +74,7 @@ Host *
   ControlMaster auto
   ControlPath /tmp/ssh_control_socket_%lcodeh_%p_%r
   # 启动lcode-hub
-  LocalCommand lcode-hub &
+  LocalCommand lcode-hub >/dev/null &
   PermitLocalCommand yes
 ```
 
