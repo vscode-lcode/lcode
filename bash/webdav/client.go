@@ -63,11 +63,11 @@ func (c *Client) log(err error) {
 	}
 	c.Logger(nil, err)
 }
-func (c *Client) Open(r *bufio.Reader) (err error) {
+func (c *Client) Open(r *bufio.Reader, version string) (err error) {
 	defer err2.Handle(&err, func() {
 		c.log(fmt.Errorf("bash client start failed: %w", err))
 	})
-	To(c.parseArgs(r))
+	To(c.parseArgs(r, version))
 	To(c.initServerAddr())
 	To(c.initID(r))
 	To(c.initPWD(r))
@@ -76,26 +76,26 @@ func (c *Client) Open(r *bufio.Reader) (err error) {
 	return
 }
 
-func (c *Client) intFlag() *flag.FlagSet {
-	f := flag.NewFlagSet("lcode", flag.ContinueOnError)
+func (c *Client) intFlag(version string) *flag.FlagSet {
+	f := flag.NewFlagSet("lcode@"+version, flag.ContinueOnError)
 	f.StringVar(&c.PWD, "pwd", ".", "工作目录")
 	f.StringVar(&c.ServerAddr, "server", c.conn.LocalAddr().String(), "server addr")
 	f.Bool("x", true, "仅用以分割bash参数, 不作其他用途")
 	return f
 }
-func (c *Client) parseArgs(r *bufio.Reader) (err error) {
+func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
 	defer err2.Handle(&err, func() {
 		c.log(fmt.Errorf("parse lcode args failed: %w", err))
 	})
 	To1(io.WriteString(c.conn, "echo $@\n"))
 	line, _ := To2(r.ReadLine())
 
-	f := c.intFlag()
+	f := c.intFlag(version)
 	var output bytes.Buffer
 	f.SetOutput(&output)
 
 	if err = f.Parse(strings.Split(string(line), " ")); err != nil {
-		err = fmt.Errorf("print help")
+		err = ErrPrintHelp
 		output := strings.ReplaceAll(string(output.Bytes()), "\n", "\nlo: ")
 		cmd := fmt.Sprintf(">&2 echo lo: %s\n", shellescape.Quote(output))
 		To1(io.WriteString(c.conn, cmd))

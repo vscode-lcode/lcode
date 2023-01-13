@@ -28,15 +28,16 @@ var args struct {
 }
 
 var VERSION = "dev"
+var f = flag.NewFlagSet("lcode@"+VERSION, flag.ExitOnError)
 
 func init() {
-	flag.StringVar(&args.addr, "addr", "127.0.0.1:4349", "local-hub listen addr")
-	flag.StringVar(&args.hello, "hello", "webdav://%s.lo.shynome.com:4349%s", "")
-	flag.StringVar(&args.localdomain, "localdomain", ".lo.shynome.com", "")
+	f.StringVar(&args.addr, "addr", "127.0.0.1:4349", "local-hub listen addr")
+	f.StringVar(&args.hello, "hello", "webdav://%s.lo.shynome.com:4349%s", "")
+	f.StringVar(&args.localdomain, "localdomain", ".lo.shynome.com", "")
 }
 
 func main() {
-	flag.Parse()
+	f.Parse(os.Args[1:])
 
 	if err := hasRunning(args.addr); err == nil {
 		return

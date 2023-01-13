@@ -111,6 +111,9 @@ func (sh *Bash) Connect(r *bufio.Reader, conn net.Conn) (err error) {
 			io.WriteString(conn, cmd)
 			return
 		}
+		if errors.Is(err, webdav.ErrPrintHelp) {
+			return
+		}
 		fmt.Println("client connect", err)
 	})
 
@@ -118,7 +121,7 @@ func (sh *Bash) Connect(r *bufio.Reader, conn net.Conn) (err error) {
 
 	c := webdav.NewClient(conn)
 
-	To(c.Open(r))
+	To(c.Open(r, sh.VERSION))
 	defer c.Close()
 	idRaw := strings.ToLower(c.ID)
 
