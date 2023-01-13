@@ -85,6 +85,12 @@ func (c *Client) intFlag(version string) *flag.FlagSet {
 	f := flag.NewFlagSet("lcode@"+version, flag.ContinueOnError)
 	f.StringVar(&c.ServerAddr, "server", c.conn.LocalAddr().String(), "server addr")
 	f.Bool("x", true, "仅用以分割bash参数, 不作其他用途")
+	f.Usage = func() {
+		fmt.Fprintf(f.Output(), "Usage of %s:\n", f.Name())
+		fmt.Fprintf(f.Output(), "\n lcode [target]...")
+		fmt.Fprintf(f.Output(), "\n   如: a.txt ~ /www/ \n\n")
+		f.PrintDefaults()
+	}
 	return f
 }
 func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
