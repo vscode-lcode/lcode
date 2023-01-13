@@ -63,12 +63,12 @@ func (c *Client) log(err error) {
 	}
 	c.Logger(nil, err)
 }
-func (c *Client) Open(r *bufio.Reader, version string) (err error) {
+func (c *Client) Open(r *bufio.Reader, version string, id string) (err error) {
 	defer err2.Handle(&err, func() {
 		c.log(fmt.Errorf("bash client start failed: %w", err))
 	})
 	To(c.parseArgs(r, version))
-	To(c.initServerAddr())
+	To(c.initServerAddr(r, id))
 	To(c.initID(r))
 	To(c.initPWD(r))
 	go c.tasks.Start()
@@ -108,12 +108,27 @@ func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
 	return
 }
 
-func (c *Client) initServerAddr() (err error) {
+func (c *Client) initServerAddr(r *bufio.Reader, id string) (err error) {
 	defer err2.Handle(&err, func() {
-		err = ErrServerAddrParseFailed
+		if errors.Is(err, ErrNeedPrint) {
+			return
+		}
+		err = ErrServerAddrIncorrect
 	})
-	addr := To1(net.ResolveTCPAddr("tcp", c.ServerAddr))
+	addr, err := net.ResolveTCPAddr("tcp", c.ServerAddr)
+	if err != nil {
+		return ErrServerAddrParseFailed
+	}
 	c.ServerAddr = fmt.Sprintf("%s/%d", addr.IP.String(), addr.Port)
+
+	tcp := fmt.Sprintf("4>&0 5>/dev/tcp/%s 3> >(>&5 dd bs=1 <&4) dd bs=1 <&5", c.ServerAddr)
+	cmd := fmt.Sprintf("echo -1 | %s || echo /dev/null\n", tcp)
+	To1(io.WriteString(c.conn, cmd))
+	line, _ := To2(r.ReadLine())
+	if string(line) != id {
+		err = ErrServerAddrIncorrect
+		return
+	}
 	return
 }
 

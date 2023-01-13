@@ -29,6 +29,7 @@ type Bash struct {
 
 	IDGenerator IDGenerator
 	VERSION     string
+	ID          string
 }
 
 type ID interface {
@@ -54,6 +55,7 @@ func (sh *Bash) Serve(l net.Listener) (err error) {
 	if sh.IDGenerator == nil {
 		return fmt.Errorf("IDGenerator is required")
 	}
+	sh.ID = fmt.Sprintf("lcode-hub@%s:%s", sh.VERSION, uuid.NewString())
 	sh.listener = l
 	for {
 		conn := To1(l.Accept())
@@ -74,6 +76,11 @@ func (sh *Bash) serve(conn net.Conn) (err error) {
 		return
 	}
 	switch v := string(header[0]); v {
+	case "-":
+		defer conn.Close()
+		if string(header) == "-1" {
+			io.WriteString(conn, sh.ID+"\n")
+		}
 	case "0":
 		sh.Connect(r, conn)
 	case "1":
@@ -121,7 +128,7 @@ func (sh *Bash) Connect(r *bufio.Reader, conn net.Conn) (err error) {
 
 	c := webdav.NewClient(conn)
 
-	To(c.Open(r, sh.VERSION))
+	To(c.Open(r, sh.VERSION, sh.ID))
 	defer c.Close()
 	idRaw := strings.ToLower(c.ID)
 
