@@ -17,10 +17,10 @@ func TestParseIDRaw(t *testing.T) {
 }
 
 func TestAddHost(t *testing.T) {
-	id := To1(hub.IDGenerator("1-shy-matx", "/"))
+	id := To1(hub.IDGenerator(testLC{"1-shy-matx", "/"}))
 	defer id.Close()
 	t.Log(id.No())
-	id2 := To1(hub.IDGenerator("1-shy-matx", "/"))
+	id2 := To1(hub.IDGenerator(testLC{"1-shy-matx", "/"}))
 	defer id2.Close()
 	t.Log("pass")
 }

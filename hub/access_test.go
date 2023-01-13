@@ -7,8 +7,18 @@ import (
 	. "github.com/lainio/err2/try"
 )
 
+type testLC struct {
+	id  string
+	pwd string
+}
+
+func (lc testLC) RawID() string     { return lc.id }
+func (lc testLC) PWD() string       { return lc.pwd }
+func (lc testLC) Targets() []string { return []string{lc.pwd} }
+
 func TestAllowDir(t *testing.T) {
-	id := To1(hub.IDGenerator("5-aaa", "/www/vvv/"))
+	lc := testLC{"5-aaa", "/www/vvv/"}
+	id := To1(hub.IDGenerator(lc))
 	host := id.(*Client).ToHost()
 	a1 := To1(hub.AllowDir(host, "/www/vvv/8888"))
 	assert.NotNil(a1)

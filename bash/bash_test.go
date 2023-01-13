@@ -26,7 +26,7 @@ var l = To1(net.Listen("tcp", ":0"))
 
 func init() {
 
-	bash.IDGenerator = func(id string, pwd string) (ID, error) {
+	bash.IDGenerator = func(c LcodeClient) (ID, error) {
 		testClientIDNo++
 		no := testClientIDNo
 		return TestClientID(fmt.Sprintf("%d", no)), nil
