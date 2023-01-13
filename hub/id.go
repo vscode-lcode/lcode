@@ -15,16 +15,17 @@ import (
 
 var _ bash.IDGenerator = (*Hub)(nil).IDGenerator
 
-func (hub *Hub) IDGenerator(idRaw string, pwd string) (id bash.ID, err error) {
+func (hub *Hub) IDGenerator(c bash.LcodeClient) (id bash.ID, err error) {
 	defer err2.Handle(&err)
-	host := parseIDRaw(idRaw)
+	host := parseIDRaw(c.RawID())
 	if host.No == 0 {
 		To(hub.addHost(&host))
 	}
 	client := &Client{
 		Namespace: host.Namespace,
 		No2:       host.No,
-		Workdir:   pwd,
+		Workdir:   c.PWD(),
+		Targets:   c.Targets(),
 	}
 	To(hub.addClient(client))
 	hub.setHostLocker(client.ToHost())

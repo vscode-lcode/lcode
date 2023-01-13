@@ -16,9 +16,11 @@ func (hub *Hub) AllowDir(host Host, filepath string) (client *Client, err error)
 	}
 	dirs := item.Value()
 	for _, item := range dirs {
-		if allow := strings.HasPrefix(filepath, item.Workdir); allow {
-			client = &item
-			return
+		for _, target := range item.Targets {
+			if allow := strings.HasPrefix(filepath, target); allow {
+				client = &item
+				return
+			}
 		}
 	}
 	return

@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/SierraSoftworks/multicast/v2"
@@ -26,7 +28,10 @@ type Client struct {
 	ID    string
 	tasks *ttlcache.Cache[string, chan net.Conn]
 
-	PWD    string // 也有可能是文件, 用途是用于限制文件访问
+	PWD         string
+	targets     []string
+	targetsInit *sync.Once
+
 	Logger func(file *File, err error)
 	closed *multicast.Channel[any]
 
@@ -78,7 +83,6 @@ func (c *Client) Open(r *bufio.Reader, version string, id string) (err error) {
 
 func (c *Client) intFlag(version string) *flag.FlagSet {
 	f := flag.NewFlagSet("lcode@"+version, flag.ContinueOnError)
-	f.StringVar(&c.PWD, "pwd", ".", "工作目录")
 	f.StringVar(&c.ServerAddr, "server", c.conn.LocalAddr().String(), "server addr")
 	f.Bool("x", true, "仅用以分割bash参数, 不作其他用途")
 	return f
@@ -102,9 +106,7 @@ func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
 		return
 	}
 
-	if f.Arg(0) != "" {
-		f.Set("pwd", f.Arg(0))
-	}
+	c.targets = f.Args()
 	return
 }
 
@@ -153,22 +155,40 @@ func (c *Client) initPWD(r *bufio.Reader) (err error) {
 	defer err2.Handle(&err, func() {
 		c.log(fmt.Errorf("init pwd failed: %w", err))
 	})
-	cmd := fmt.Sprintf("TZ=UTC0 ls -Ald --full-time %s || echo /dev/null | head -n 1\n", shellescape.Quote(c.PWD))
-	To1(io.WriteString(c.conn, cmd))
-	line, _ := To2(r.ReadLine())
-	if string(line) == "/dev/null" {
-		err = ErrEditTargetNotExists
-		return
-	}
-	f := parseLsLine(line)
-	if strings.HasPrefix(f.sys[7], "/") {
-		c.PWD = f.sys[7]
-		return
-	}
 	To1(io.WriteString(c.conn, "pwd\n"))
 	pwd, _ := To2(r.ReadLine())
-	c.PWD = filepath.Join(string(pwd), f.name)
+	c.PWD = string(pwd)
+	c.targetsInit = &sync.Once{}
 	return
+}
+
+// 要编辑的目标文件, 用途是用于限制文件访问
+func (c *Client) Targets() []string {
+	c.targetsInit.Do(func() {
+		if len(c.targets) == 0 {
+			c.targets = []string{c.PWD}
+			return
+		}
+		var targets = make([]string, 0)
+		defer func() { c.targets = targets }()
+		for _, t := range c.targets {
+			f := OpenFile(c, t)
+			stat, err := f.Stat()
+			switch {
+			case errors.Is(err, os.ErrNotExist):
+				targets = append(targets, "/dev/null"+t)
+			case err != nil:
+				targets = append(targets, "/dev/err"+t)
+			default:
+				fullpath := stat.Sys().([]string)[7]
+				if !strings.HasPrefix(fullpath, "/") {
+					fullpath = filepath.Join(c.PWD, fullpath)
+				}
+				targets = append(targets, fullpath)
+			}
+		}
+	})
+	return c.targets
 }
 
 func (c *Client) Close() {

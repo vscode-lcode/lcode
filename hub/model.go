@@ -18,9 +18,10 @@ type Client struct {
 	hub *Hub
 
 	Id        int64
-	Namespace string `xorm:"notnull"`
-	No2       uint32 `xorm:"notnull 'no'"`
-	Workdir   string `xorm:"notnull"`
+	Namespace string   `xorm:"notnull"`
+	No2       uint32   `xorm:"notnull 'no'"`
+	Workdir   string   `xorm:"notnull"`
+	Targets   []string `xorm:"notnull"`
 }
 
 func Sync(eg *xorm.Engine) (err error) {
