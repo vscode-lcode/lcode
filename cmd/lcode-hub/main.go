@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/alessio/shellescape"
@@ -60,10 +61,29 @@ func main() {
 				fmt.Println("client connected", c.ID)
 				defer fmt.Println("client disconnected", c.ID)
 				f := format.FindStringSubmatch(c.ID)
-				if len(f) == 3 {
-					id := fmt.Sprintf("%s-%s", f[2], f[1])
-					hello := fmt.Sprintf(args.hello, id, c.PWD)
+				if len(f) != 3 {
+					return
+				}
+				id := fmt.Sprintf("%s-%s", f[2], f[1])
+				noEditTargets := true
+				for _, t := range c.Targets() {
+					var hello string
+					switch {
+					case strings.HasPrefix(t, "/dev/null"):
+						t = strings.TrimPrefix(t, "/dev/null")
+						hello = fmt.Sprintf("this target is not exists: %s", t)
+					case strings.HasPrefix(t, "/dev/err"):
+						t = strings.TrimPrefix(t, "/dev/err")
+						hello = fmt.Sprintf("this target cannot be opened: %s", t)
+					default:
+						noEditTargets = false
+						hello = fmt.Sprintf(args.hello, id, t)
+					}
 					c.Exec(fmt.Sprintf(">&2 echo lo: %s", shellescape.Quote(hello)))
+				}
+				if noEditTargets {
+					c.Exec(fmt.Sprintf(">&2 echo lo: no editable targets, exit"))
+					c.Close()
 				}
 				<-c.Closed()
 			}(client)
