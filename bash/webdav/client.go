@@ -27,7 +27,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const name = "bash/webdav"
+var tracer = otel.Tracer("github.com/vscode-lcode/lcode/v2/bash/webdav")
 
 type Client struct {
 	conn  net.Conn
@@ -69,7 +69,7 @@ func NewClient(conn net.Conn) *Client {
 }
 
 func (c *Client) Open(r *bufio.Reader, version string, id string) (err error) {
-	ctx, span := otel.Tracer(name).Start(context.Background(), "client open")
+	ctx, span := tracer.Start(context.Background(), "client open")
 	c.Ctx = ctx
 	defer err0.Record(&err, span)
 
@@ -102,7 +102,7 @@ func (c *Client) intFlag(version string) *flag.FlagSet {
 	return f
 }
 func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "client parse lcode args")
+	_, span := tracer.Start(c.Ctx, "client parse lcode args")
 	defer span.End()
 	defer err0.Record(&err, span)
 
@@ -126,7 +126,7 @@ func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
 }
 
 func (c *Client) initServerAddr(r *bufio.Reader, id string) (err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "client init server addr")
+	_, span := tracer.Start(c.Ctx, "client init server addr")
 	defer span.End()
 	defer err0.Record(&err, span)
 	defer err2.Handle(&err, func() {
@@ -153,7 +153,7 @@ func (c *Client) initServerAddr(r *bufio.Reader, id string) (err error) {
 }
 
 func (c *Client) initID(r *bufio.Reader) (err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "client init id")
+	_, span := tracer.Start(c.Ctx, "client init id")
 	defer span.End()
 	defer err0.Record(&err, span)
 
@@ -171,7 +171,7 @@ func (c *Client) StoreID(id string) (err error) {
 }
 
 func (c *Client) initPWD(r *bufio.Reader) (err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "client init pwd")
+	_, span := tracer.Start(c.Ctx, "client init pwd")
 	defer span.End()
 	defer err0.Record(&err, span)
 

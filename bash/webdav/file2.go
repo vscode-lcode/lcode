@@ -15,7 +15,6 @@ import (
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
 	"github.com/vscode-lcode/lcode/v2/util/err0"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/webdav"
@@ -47,7 +46,7 @@ var _ webdav.File = (*File)(nil)
 var no uint64 = 0
 
 func OpenFile(c *Client, filename string) *File {
-	ctx, span := otel.Tracer(name).Start(c.Ctx, "file open")
+	ctx, span := tracer.Start(c.Ctx, "file open")
 	span.SetAttributes(
 		attribute.String("filepath", filename),
 	)
@@ -80,7 +79,7 @@ func (f *File) Close() error {
 }
 
 func (f *File) Read(p []byte) (n int, err error) {
-	_, span := otel.Tracer(name).Start(f.Ctx, "file read")
+	_, span := tracer.Start(f.Ctx, "file read")
 	defer span.End()
 	defer err2.Handle(&err, func() {
 		if errors.Is(err, io.EOF) {
@@ -108,7 +107,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
-	_, span := otel.Tracer(name).Start(f.Ctx, "file write")
+	_, span := tracer.Start(f.Ctx, "file write")
 	defer span.End()
 	defer err0.Record(&err, span)
 
@@ -127,7 +126,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 }
 
 func (f *File) Seek(offset int64, whence int) (n int64, err error) {
-	_, span := otel.Tracer(name).Start(f.Ctx, "file seek")
+	_, span := tracer.Start(f.Ctx, "file seek")
 	defer span.End()
 	defer err2.Handle(&err, func() {
 		span.RecordError(err)

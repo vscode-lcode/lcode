@@ -20,7 +20,7 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-const name = "bash"
+var tracer = otel.Tracer("github.com/vscode-lcode/lcode/v2/bash")
 
 type Bash struct {
 	clients *ttlcache.Cache[string, *webdav.Client]
@@ -59,7 +59,7 @@ func (sh *Bash) Serve(l net.Listener) (err error) {
 }
 
 func (sh *Bash) serve(conn net.Conn) (err error) {
-	_, span := otel.Tracer(name).Start(context.Background(), "serve conn")
+	_, span := tracer.Start(context.Background(), "serve conn")
 	defer span.End()
 	defer err0.Record(&err, span)
 	defer err2.Handle(&err, func() {

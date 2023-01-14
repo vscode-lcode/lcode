@@ -11,14 +11,13 @@ import (
 	"github.com/jellydator/ttlcache/v3"
 	. "github.com/lainio/err2/try"
 	"github.com/vscode-lcode/lcode/v2/util/err0"
-	"go.opentelemetry.io/otel"
 	"golang.org/x/net/webdav"
 )
 
 var _ webdav.FileSystem = (*Client)(nil)
 
 func (c *Client) Mkdir(ctx context.Context, name string, perm os.FileMode) (err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "fs mkdir")
+	_, span := tracer.Start(c.Ctx, "fs mkdir")
 	defer span.End()
 	defer err0.Record(&err, span)
 
@@ -27,7 +26,7 @@ func (c *Client) Mkdir(ctx context.Context, name string, perm os.FileMode) (err 
 	return
 }
 func (c *Client) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (f webdav.File, err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "fs openfile")
+	_, span := tracer.Start(c.Ctx, "fs openfile")
 	defer span.End()
 	defer err0.Record(&err, span)
 
@@ -35,7 +34,7 @@ func (c *Client) OpenFile(ctx context.Context, name string, flag int, perm os.Fi
 	return
 }
 func (c *Client) RemoveAll(ctx context.Context, name string) (err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "fs remove all")
+	_, span := tracer.Start(c.Ctx, "fs remove all")
 	defer span.End()
 	defer err0.Record(&err, span)
 
@@ -46,7 +45,7 @@ func (c *Client) RemoveAll(ctx context.Context, name string) (err error) {
 	return
 }
 func (c *Client) Rename(ctx context.Context, oldName, newName string) (err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "fs rename")
+	_, span := tracer.Start(c.Ctx, "fs rename")
 	defer span.End()
 	defer err0.Record(&err, span)
 
@@ -59,7 +58,7 @@ func (c *Client) Rename(ctx context.Context, oldName, newName string) (err error
 }
 
 func (c *Client) Stat(ctx context.Context, name string) (f os.FileInfo, err error) {
-	_, span := otel.Tracer(name).Start(c.Ctx, "fs stat")
+	_, span := tracer.Start(c.Ctx, "fs stat")
 	defer span.End()
 	defer err0.Record(&err, span)
 

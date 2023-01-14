@@ -14,11 +14,10 @@ import (
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
 	"github.com/vscode-lcode/lcode/v2/util/err0"
-	"go.opentelemetry.io/otel"
 )
 
 func (f *File) Readdir(count int) (files []fs.FileInfo, err error) {
-	_, span := otel.Tracer(name).Start(f.Ctx, "file readdir")
+	_, span := tracer.Start(f.Ctx, "file readdir")
 	defer span.End()
 	defer err0.Record(&err, span)
 
@@ -79,7 +78,7 @@ func (f *File) _Stat() (finfo fs.FileInfo, err error) {
 	return
 }
 func (f *File) _GetStat() (finfo fs.FileInfo, err error) {
-	_, span := otel.Tracer(name).Start(f.Ctx, "file stat")
+	_, span := tracer.Start(f.Ctx, "file stat")
 	defer span.End()
 	defer err2.Handle(&err, func() {
 		if errors.Is(err, os.ErrNotExist) {
