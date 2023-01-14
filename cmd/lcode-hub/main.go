@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/alessio/shellescape"
@@ -33,7 +35,7 @@ var f = flag.NewFlagSet("lcode-hub@"+VERSION, flag.ExitOnError)
 
 func init() {
 	f.StringVar(&args.addr, "addr", "127.0.0.1:4349", "local-hub listen addr")
-	f.StringVar(&args.hello, "hello", "webdav://%s.lo.shynome.com:4349%s", "")
+	f.StringVar(&args.hello, "hello", "webdav://{{.host}}.lo.shynome.com:4349{{.path}}", "")
 	f.StringVar(&args.localdomain, "localdomain", ".lo.shynome.com", "")
 }
 
@@ -56,6 +58,7 @@ func main() {
 	bash.VERSION = VERSION
 	go func() {
 		var format = regexp.MustCompile(`^\d+-(.+)-(\d+)$`)
+		helloTpl := To1(template.New("hello").Parse(args.hello + "\n"))
 		for client := range bash.Connected() {
 			go func(c *webdav.Client) {
 				fmt.Println("client connected", c.ID)
@@ -66,21 +69,26 @@ func main() {
 				}
 				id := fmt.Sprintf("%s-%s", f[2], f[1])
 				noEditTargets := true
+				var output bytes.Buffer
 				for _, t := range c.Targets() {
-					var hello string
 					switch {
 					case strings.HasPrefix(t, "/dev/null"):
 						t = strings.TrimPrefix(t, "/dev/null")
-						hello = fmt.Sprintf("this target is not exists: %s", t)
+						fmt.Fprintf(&output, "this target is not exists: %s", t)
 					case strings.HasPrefix(t, "/dev/err"):
 						t = strings.TrimPrefix(t, "/dev/err")
-						hello = fmt.Sprintf("this target cannot be opened: %s", t)
+						fmt.Fprintf(&output, "this target cannot be opened: %s", t)
 					default:
 						noEditTargets = false
-						hello = fmt.Sprintf(args.hello, id, t)
+						helloTpl.Execute(&output, map[string]string{
+							"host": id,
+							"path": t,
+						})
 					}
-					c.Exec(fmt.Sprintf(">&2 echo lo: %s", shellescape.Quote(hello)))
 				}
+				hello := string(output.Bytes())
+				hello = strings.ReplaceAll(hello, "\n", "\nlo: ")
+				c.Exec(fmt.Sprintf(">&2 echo lo: %s", shellescape.Quote(hello)))
 				if noEditTargets {
 					c.Exec(fmt.Sprintf(">&2 echo lo: no editable targets, exit"))
 					c.Close()
