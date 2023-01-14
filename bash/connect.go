@@ -2,6 +2,7 @@ package bash
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,8 @@ import (
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
 	"github.com/vscode-lcode/lcode/v2/bash/webdav"
+	"github.com/vscode-lcode/lcode/v2/util/err0"
+	"go.opentelemetry.io/otel"
 )
 
 type ID interface {
@@ -31,6 +34,8 @@ type IDGenerator func(client LcodeClient) (ID, error)
 
 func (sh *Bash) Connect(r *bufio.Reader, conn net.Conn) (err error) {
 	defer conn.Close()
+	_, span := otel.Tracer(name).Start(context.Background(), "client connect")
+	defer span.End()
 	defer err2.Handle(&err, func() {
 		if errors.Is(err, io.EOF) {
 			return
@@ -43,7 +48,7 @@ func (sh *Bash) Connect(r *bufio.Reader, conn net.Conn) (err error) {
 		if errors.Is(err, webdav.ErrPrintHelp) {
 			return
 		}
-		fmt.Println("client connect", err)
+		err0.Record(&err, span)
 	})
 
 	io.WriteString(conn, "export PS1=''\n")

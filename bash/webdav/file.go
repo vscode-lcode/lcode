@@ -13,19 +13,15 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
+	"github.com/vscode-lcode/lcode/v2/util/err0"
+	"go.opentelemetry.io/otel"
 )
 
-func (f *File) log(err error) {
-	if f.c.Logger == nil {
-		return
-	}
-	f.c.Logger(f, err)
-}
-
 func (f *File) Readdir(count int) (files []fs.FileInfo, err error) {
-	defer err2.Handle(&err, func() {
-		f.log(fmt.Errorf("readdir err: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(f.Ctx, "file readdir")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	list := To1(f.readdir(count))
 	var wg sync.WaitGroup
 	wg.Add(len(list))
@@ -83,12 +79,15 @@ func (f *File) _Stat() (finfo fs.FileInfo, err error) {
 	return
 }
 func (f *File) _GetStat() (finfo fs.FileInfo, err error) {
+	_, span := otel.Tracer(name).Start(f.Ctx, "file stat")
+	defer span.End()
 	defer err2.Handle(&err, func() {
 		if errors.Is(err, os.ErrNotExist) {
 			return
 		}
-		f.log(fmt.Errorf("stat err: %w", err))
+		err0.Record(&err, span)
 	})
+
 	cmd := fmt.Sprintf("TZ=UTC0 ls -Ald --full-time %s", shellescape.Quote(f.name))
 	conn := To1(f.c.Exec(cmd))
 	defer conn.Close()

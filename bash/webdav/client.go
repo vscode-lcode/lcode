@@ -21,7 +21,13 @@ import (
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
+	"github.com/vscode-lcode/lcode/v2/util/err0"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+const name = "bash/webdav"
 
 type Client struct {
 	conn  net.Conn
@@ -32,7 +38,7 @@ type Client struct {
 	targets     []string
 	targetsInit *sync.Once
 
-	Logger func(file *File, err error)
+	Ctx    context.Context
 	closed *multicast.Channel[any]
 
 	statsLocker *ttlcache.Cache[string, *StatWithLocker]
@@ -62,22 +68,24 @@ func NewClient(conn net.Conn) *Client {
 	return c
 }
 
-func (c *Client) log(err error) {
-	if c.Logger == nil {
-		return
-	}
-	c.Logger(nil, err)
-}
 func (c *Client) Open(r *bufio.Reader, version string, id string) (err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("bash client start failed: %w", err))
-	})
+	ctx, span := otel.Tracer(name).Start(context.Background(), "client open")
+	c.Ctx = ctx
+	defer err0.Record(&err, span)
+
 	To(c.parseArgs(r, version))
 	To(c.initServerAddr(r, id))
 	To(c.initID(r))
 	To(c.initPWD(r))
 	go c.tasks.Start()
 	go c.statsLocker.Start()
+
+	span.SetAttributes(
+		attribute.String("host", c.ID),
+		attribute.String("pwd", c.PWD),
+		attribute.StringSlice("targets", c.targets),
+	)
+
 	return
 }
 
@@ -94,9 +102,10 @@ func (c *Client) intFlag(version string) *flag.FlagSet {
 	return f
 }
 func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("parse lcode args failed: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(c.Ctx, "client parse lcode args")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	To1(io.WriteString(c.conn, "echo $@\n"))
 	line, _ := To2(r.ReadLine())
 
@@ -117,12 +126,15 @@ func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
 }
 
 func (c *Client) initServerAddr(r *bufio.Reader, id string) (err error) {
+	_, span := otel.Tracer(name).Start(c.Ctx, "client init server addr")
+	defer span.End()
+	defer err0.Record(&err, span)
 	defer err2.Handle(&err, func() {
-		if errors.Is(err, ErrNeedPrint) {
-			return
+		if !errors.Is(err, ErrNeedPrint) {
+			err = ErrServerAddrIncorrect
 		}
-		err = ErrServerAddrIncorrect
 	})
+
 	addr, err := net.ResolveTCPAddr("tcp", c.ServerAddr)
 	if err != nil {
 		return ErrServerAddrParseFailed
@@ -141,9 +153,10 @@ func (c *Client) initServerAddr(r *bufio.Reader, id string) (err error) {
 }
 
 func (c *Client) initID(r *bufio.Reader) (err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("got default init id failed: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(c.Ctx, "client init id")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	cmd := "echo $(2>/dev/null dd if=~/.lcode-id || echo 0)-$(2>/dev/null dd if=/proc/sys/kernel/hostname)\n"
 	To1(io.WriteString(c.conn, cmd))
 	line, _ := To2(r.ReadLine())
@@ -158,9 +171,10 @@ func (c *Client) StoreID(id string) (err error) {
 }
 
 func (c *Client) initPWD(r *bufio.Reader) (err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("init pwd failed: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(c.Ctx, "client init pwd")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	To1(io.WriteString(c.conn, "pwd\n"))
 	pwd, _ := To2(r.ReadLine())
 	c.PWD = string(pwd)
@@ -198,6 +212,8 @@ func (c *Client) Targets() []string {
 }
 
 func (c *Client) Close() {
+	defer trace.SpanFromContext(c.Ctx).End()
+
 	c.tasks.DeleteAll()
 	c.tasks.Stop()
 

@@ -9,12 +9,16 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.0.1
 	github.com/lainio/err2 v0.8.13
 	github.com/mattn/go-sqlite3 v1.14.16
+	go.opentelemetry.io/otel v1.11.2
+	go.opentelemetry.io/otel/trace v1.11.2
 	golang.org/x/net v0.5.0
 	xorm.io/builder v0.3.12
 	xorm.io/xorm v1.3.2
 )
 
 require (
+	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.8.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

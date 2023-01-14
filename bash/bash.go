@@ -3,6 +3,7 @@ package bash
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -15,7 +16,11 @@ import (
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
 	"github.com/vscode-lcode/lcode/v2/bash/webdav"
+	"github.com/vscode-lcode/lcode/v2/util/err0"
+	"go.opentelemetry.io/otel"
 )
+
+const name = "bash"
 
 type Bash struct {
 	clients *ttlcache.Cache[string, *webdav.Client]
@@ -54,9 +59,11 @@ func (sh *Bash) Serve(l net.Listener) (err error) {
 }
 
 func (sh *Bash) serve(conn net.Conn) (err error) {
+	_, span := otel.Tracer(name).Start(context.Background(), "serve conn")
+	defer span.End()
+	defer err0.Record(&err, span)
 	defer err2.Handle(&err, func() {
 		conn.Close()
-		fmt.Println("serve err:", err)
 	})
 
 	r := bufio.NewReader(conn)

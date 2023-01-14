@@ -9,32 +9,36 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/jellydator/ttlcache/v3"
-	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
+	"github.com/vscode-lcode/lcode/v2/util/err0"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/net/webdav"
 )
 
 var _ webdav.FileSystem = (*Client)(nil)
 
 func (c *Client) Mkdir(ctx context.Context, name string, perm os.FileMode) (err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("mkdir err: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(c.Ctx, "fs mkdir")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	cmd := fmt.Sprintf("mkdir -p %s", shellescape.Quote(name))
 	To(c.ExecNoreply(cmd))
 	return
 }
 func (c *Client) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (f webdav.File, err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("open file err: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(c.Ctx, "fs openfile")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	f = OpenFile(c, name)
 	return
 }
 func (c *Client) RemoveAll(ctx context.Context, name string) (err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("remove all err: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(c.Ctx, "fs remove all")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	defer c.statsLocker.DeleteAll()
 
 	cmd := fmt.Sprintf("rm -rf %s", shellescape.Quote(name))
@@ -42,9 +46,10 @@ func (c *Client) RemoveAll(ctx context.Context, name string) (err error) {
 	return
 }
 func (c *Client) Rename(ctx context.Context, oldName, newName string) (err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("rename err: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(c.Ctx, "fs rename")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	defer c.statsLocker.Delete(oldName)
 	defer c.statsLocker.Delete(newName)
 
@@ -54,9 +59,9 @@ func (c *Client) Rename(ctx context.Context, oldName, newName string) (err error
 }
 
 func (c *Client) Stat(ctx context.Context, name string) (f os.FileInfo, err error) {
-	defer err2.Handle(&err, func() {
-		c.log(fmt.Errorf("stat err: %w", err))
-	})
+	_, span := otel.Tracer(name).Start(c.Ctx, "fs stat")
+	defer span.End()
+	defer err0.Record(&err, span)
 
 	sl := c.StatLocker(name)
 	sl.locker.RLock()

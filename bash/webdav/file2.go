@@ -1,6 +1,7 @@
 package webdav
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,10 +14,16 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
+	"github.com/vscode-lcode/lcode/v2/util/err0"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/webdav"
 )
 
 type File struct {
+	Ctx context.Context
+
 	c      *Client
 	name   string
 	cursor int64
@@ -40,7 +47,13 @@ var _ webdav.File = (*File)(nil)
 var no uint64 = 0
 
 func OpenFile(c *Client, filename string) *File {
+	ctx, span := otel.Tracer(name).Start(c.Ctx, "file open")
+	span.SetAttributes(
+		attribute.String("filepath", filename),
+	)
 	return &File{
+		Ctx: ctx,
+
 		no: atomic.AddUint64(&no, 1),
 
 		c:    c,
@@ -53,6 +66,8 @@ func OpenFile(c *Client, filename string) *File {
 }
 
 func (f *File) Close() error {
+	defer trace.SpanFromContext(f.Ctx).End()
+
 	if f.reader != nil {
 		f.reader.Close()
 	}
@@ -65,12 +80,15 @@ func (f *File) Close() error {
 }
 
 func (f *File) Read(p []byte) (n int, err error) {
+	_, span := otel.Tracer(name).Start(f.Ctx, "file read")
+	defer span.End()
 	defer err2.Handle(&err, func() {
 		if errors.Is(err, io.EOF) {
 			return
 		}
-		f.log(fmt.Errorf("read err: %w", err))
+		err0.Record(&err, span)
 	})
+
 	stat := To1(f.Stat())
 	if stat.IsDir() {
 		return 0, io.EOF
@@ -90,9 +108,10 @@ func (f *File) Read(p []byte) (n int, err error) {
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
-	defer err2.Handle(&err, func() {
-		fmt.Println("write err:", err)
-	})
+	_, span := otel.Tracer(name).Start(f.Ctx, "file write")
+	defer span.End()
+	defer err0.Record(&err, span)
+
 	f.writerInit.Do(func() {
 		cmd := fmt.Sprintf("dd of=%s seek=%d", shellescape.Quote(f.name), f.cursor)
 		cmd = fmt.Sprintf("%s %s", cmd, "oflag=seek_bytes")
@@ -108,8 +127,10 @@ func (f *File) Write(p []byte) (n int, err error) {
 }
 
 func (f *File) Seek(offset int64, whence int) (n int64, err error) {
+	_, span := otel.Tracer(name).Start(f.Ctx, "file seek")
+	defer span.End()
 	defer err2.Handle(&err, func() {
-		f.log(fmt.Errorf("seek err: %w", err))
+		span.RecordError(err)
 	})
 	switch whence {
 	case io.SeekStart:
