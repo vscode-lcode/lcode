@@ -41,7 +41,7 @@ var args struct {
 
 var VERSION = "dev"
 var f = flag.NewFlagSet("lcode-hub@"+VERSION, flag.ExitOnError)
-var defaultLogLv = "0"
+var defaultLogLv = "11"
 
 func init() {
 	f.StringVar(&args.addr, "addr", "127.0.0.1:4349", "local-hub listen addr")
