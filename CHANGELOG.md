@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.2] - 2023-01-15
+
+### Add
+
+- 添加 github workflow release
+
 ## [2.1.1] - 2023-01-15
 
 ### Add
