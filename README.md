@@ -48,9 +48,9 @@ debug
 
 ### 下载 (暂无)
 
-```sh
-wget -O lcode-hub https://xxxxxx/ && chmod +x lcode-hub && sudo mv lcode-hub /usr/local/bin/
-```
+[点击前往 Releases 下载](https://github.com/vscode-lcode/lcode/releases)
+
+其他架构的请从源码 build 或提出 issues 添加需要的架构
 
 ### 从源码 build
 
@@ -74,7 +74,7 @@ Host *
   ControlMaster auto
   ControlPath /tmp/ssh_control_socket_%lcodeh_%p_%r
   # 启动lcode-hub
-  LocalCommand lcode-hub >/dev/null &
+  LocalCommand ~/go/bin/lcode-hub >/dev/null &
   PermitLocalCommand yes
 ```
 
