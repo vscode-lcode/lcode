@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.3] - 2023-01-15
+
+### Change
+
+- 更换 sqlite 驱动为 `modernc.org/sqlite`, `github.com/mattn/go-sqlite3`跨平台编译时出现错误
+- 添加了多平台编译配置
+
 ## [2.1.2] - 2023-01-15
 
 ### Add
