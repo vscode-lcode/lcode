@@ -4,7 +4,7 @@ version: 1
 # (Optional) List of env variables used during compilation.
 env:
   - GO111MODULE=on
-  - CGO_ENABLED=1
+  - CGO_ENABLED=0
 
 # (Optional) Flags for the compiler.
 flags:
@@ -12,15 +12,10 @@ flags:
   - -tags=netgo
 
 # The OS to compile for. `GOOS` env variable will be set to this value.
-goos: 
-  - windows
-  - linux
-  - darwin
+goos: "{{goos}}"
 
 # The architecture to compile for. `GOARCH` env variable will be set to this value.
-goarch:
-  - amd64
-  - arm64
+goarch: "{{goarch}}"
 
 # (Optional) Entrypoint to compile.
 main: ./cmd/lcode-hub
@@ -36,6 +31,3 @@ binary: lcode-hub-{{ .Os }}-{{ .Arch }}
 # (Optional) ldflags generated dynamically in the workflow, and set as the `evaluated-envs` input variables in the workflow.
 ldflags:
   - "-X main.Version={{ .Env.VERSION }}"
-  - "-X main.Commit={{ .Env.COMMIT }}"
-  - "-X main.CommitDate={{ .Env.COMMIT_DATE }}"
-  - "-X main.TreeState={{ .Env.TREE_STATE }}"
