@@ -5,6 +5,12 @@ import (
 	"testing"
 )
 
+var changeDefaultArgs int = func() int {
+	// VERSION = "test"
+	defaultLogLv = "11"
+	return 1
+}()
+
 func TestMain(m *testing.T) {
 	var running string
 	f.StringVar(&running, "test.run", "", "golang test")
@@ -12,6 +18,5 @@ func TestMain(m *testing.T) {
 	if running != "^TestMain$" {
 		return
 	}
-	// VERSION = "test"
 	main()
 }

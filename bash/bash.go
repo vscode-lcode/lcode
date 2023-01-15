@@ -108,7 +108,6 @@ func (sh *Bash) BindStderr(v string, r *bufio.Reader, conn net.Conn) (err error)
 	defer err2.Handle(&err)
 	defer conn.Close()
 	var filters = []string{"lo: ", "1>"}
-	defer fmt.Println("err ch closed")
 	switch v {
 	case "2":
 		fallthrough

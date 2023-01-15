@@ -10,6 +10,7 @@ require (
 	github.com/lainio/err2 v0.8.13
 	github.com/mattn/go-sqlite3 v1.14.16
 	go.opentelemetry.io/otel v1.11.2
+	go.opentelemetry.io/otel/sdk v1.11.2
 	go.opentelemetry.io/otel/trace v1.11.2
 	golang.org/x/net v0.5.0
 	xorm.io/builder v0.3.12
@@ -26,6 +27,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sys v0.4.0 // indirect
 )
 
 // replace golang.org/x/net/webdav => ../net-webdav

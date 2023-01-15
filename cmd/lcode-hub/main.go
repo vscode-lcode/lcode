@@ -1,15 +1,18 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -21,6 +24,11 @@ import (
 	"github.com/vscode-lcode/lcode/v2/bash"
 	"github.com/vscode-lcode/lcode/v2/bash/webdav"
 	"github.com/vscode-lcode/lcode/v2/hub"
+	"github.com/vscode-lcode/lcode/v2/util/err0"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"xorm.io/xorm"
 )
 
@@ -28,19 +36,28 @@ var args struct {
 	hello       string
 	addr        string
 	localdomain string
+	logLv       string
 }
 
 var VERSION = "dev"
 var f = flag.NewFlagSet("lcode-hub@"+VERSION, flag.ExitOnError)
+var defaultLogLv = "0"
 
 func init() {
 	f.StringVar(&args.addr, "addr", "127.0.0.1:4349", "local-hub listen addr")
 	f.StringVar(&args.hello, "hello", "webdav://{{.host}}.lo.shynome.com:4349{{.path}}", "")
 	f.StringVar(&args.localdomain, "localdomain", ".lo.shynome.com", "")
+	f.StringVar(&args.logLv, "log", defaultLogLv, "日志输出等级: 0 - 不输出; 1 - Error; 11 - Info; 111 - Debug")
 }
+
+var tracer = otel.Tracer("lcode-hub")
 
 func main() {
 	f.Parse(os.Args[1:])
+
+	loglv := To1(strconv.ParseInt(args.logLv, 2, 64))
+	tp := newTracerProvider(LogLevel(loglv))
+	defer tp.Shutdown(context.Background())
 
 	if err := hasRunning(args.addr); err == nil {
 		return
@@ -52,7 +69,14 @@ func main() {
 	To(hub.Sync(db))
 
 	l := To1(net.Listen("tcp", args.addr))
-	fmt.Printf("lcode-hub is running on %s\n", args.addr)
+	defer l.Close()
+
+	_, span := tracer.Start(
+		err0.WithStatus(nil, codes.Ok, ""),
+		"lcode-hub is running",
+		trace.WithAttributes(attribute.String("addr", args.addr)),
+	)
+	defer span.End()
 
 	bash := bash.NewBash()
 	bash.VERSION = VERSION
@@ -61,8 +85,13 @@ func main() {
 		helloTpl := To1(template.New("hello").Parse(args.hello + "\n"))
 		for client := range bash.Connected() {
 			go func(c *webdav.Client) {
-				fmt.Println("client connected", c.ID)
-				defer fmt.Println("client disconnected", c.ID)
+				_, span := tracer.Start(
+					err0.WithStatus(err0.KeepEndOutput(nil), codes.Ok, ""),
+					"client connected",
+					trace.WithAttributes(attribute.String("id", c.ID)),
+				)
+				defer span.End()
+
 				f := format.FindStringSubmatch(c.ID)
 				if len(f) != 3 {
 					return
@@ -87,6 +116,7 @@ func main() {
 					}
 				}
 				hello := string(output.Bytes())
+				hello = strings.TrimSuffix(hello, "\n")
 				hello = strings.ReplaceAll(hello, "\n", "\nlo: ")
 				c.Exec(fmt.Sprintf(">&2 echo lo: %s", shellescape.Quote(hello)))
 				if noEditTargets {
@@ -102,21 +132,34 @@ func main() {
 	hub.LocalDomain = args.localdomain
 
 	go http.Serve(net.Listener(bash), hub)
-	To(bash.Serve(l))
+	go bash.Serve(l)
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt)
+	<-c
+
 }
 
 func hasRunning(addr string) (err error) {
+	_, span := tracer.Start(context.Background(), "lcode-hub check")
+	defer span.End()
 	defer err2.Handle(&err)
-	client := http.Client{Timeout: 2 * time.Second}
-	resp := To1(client.Get(fmt.Sprintf("http://%s/version", addr)))
-	defer resp.Body.Close()
-	r := bufio.NewReader(resp.Body)
-	line, _ := To2(r.ReadLine())
-	if v := string(line); v != "lcode-hub" {
-		err = fmt.Errorf("expect lcode-hub, but got %s", v)
+
+	conn := To1(net.Dial("tcp", addr))
+	defer conn.Close()
+
+	conn.SetDeadline(time.Now().Add(2 * time.Second))
+
+	To1(io.WriteString(conn, "-1\n"))
+	_sid := To1(io.ReadAll(conn))
+	sid := string(_sid)
+
+	if !strings.HasPrefix(sid, "lcode-hub") {
+		err = fmt.Errorf("expect lcode-hub, but got %s", sid)
 		return
 	}
-	version, _ := To2(r.ReadLine())
-	fmt.Printf("lcode-hub already has running, version: %s. exit.\n", string(version))
+
+	span.SetStatus(codes.Error, "lcode-hub already has running")
+	span.SetAttributes(attribute.String("version", sid))
 	return
 }

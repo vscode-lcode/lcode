@@ -8,7 +8,7 @@ import (
 
 func Record(err *error, span trace.Span) {
 	err2.Handle(err, func() {
-		span.SetStatus(codes.Error, "")
+		span.SetStatus(codes.Error, (*err).Error())
 		span.RecordError(*err)
 	})
 }
