@@ -18,7 +18,7 @@ type Hub struct {
 }
 
 func New(db *xorm.Engine, bash *bash.Bash) *Hub {
-	cdb := To1(xorm.NewEngine("sqlite3", "file:clients.db?mode=memory"))
+	cdb := To1(xorm.NewEngine("sqlite", "file:clients.db?mode=memory"))
 	To(cdb.Sync(new(Client)))
 	hub := &Hub{
 		db:   db,
