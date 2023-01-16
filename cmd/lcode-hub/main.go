@@ -48,8 +48,8 @@ var defaultLogLv = "11"
 
 func init() {
 	f.StringVar(&args.addr, "addr", "127.0.0.1:4349", "local-hub listen addr")
-	f.StringVar(&args.hello, "hello", "webdav://{{.host}}.lo.shynome.com:4349{{.path}}", "")
-	f.StringVar(&args.localdomain, "localdomain", ".lo.shynome.com", "")
+	f.StringVar(&args.hello, "hello", "webdav://{{.host}}-{{.hid}}.lo.shynome.com:4349{{.path}}", "")
+	f.StringVar(&args.localdomain, "localdomain", "-{{.hid}}.lo.shynome.com", "")
 	f.StringVar(&args.logLv, "log", defaultLogLv, "日志输出等级: 0 - 不输出; 1 - Error; 11 - Info; 111 - Debug")
 	f.StringVar(&args.hubID, "hub-id", "", "是否其用hub-id, 避免服务器上的文件被探测. 0 关闭")
 }
@@ -74,8 +74,6 @@ func main() {
 	To(db.Sync2(new(Config)))
 
 	if args.hubID != "0" {
-		nf := flag.NewFlagSet("locde-hub@id-get", flag.ContinueOnError)
-		nf.SetOutput(&bytes.Buffer{})
 		if len(args.hubID) == 0 {
 			v := To1(getConfig(db, "hub-id", func() string {
 				b := make([]byte, 3)
@@ -85,9 +83,8 @@ func main() {
 			}))
 			args.hubID = v
 		}
-		nf.StringVar(&args.hello, "hello", fmt.Sprintf("webdav://{{.host}}-%s.lo.shynome.com:4349{{.path}}", args.hubID), "")
-		nf.StringVar(&args.localdomain, "localdomain", fmt.Sprintf("-%s.lo.shynome.com", args.hubID), "")
-		nf.Parse(os.Args[1:])
+		args.hello = strings.ReplaceAll(args.hello, "{{.hid}}", args.hubID)
+		args.localdomain = strings.ReplaceAll(args.localdomain, "{{.hid}}", args.hubID)
 	}
 
 	l := To1(net.Listen("tcp", args.addr))
