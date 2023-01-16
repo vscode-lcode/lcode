@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -37,6 +39,7 @@ var args struct {
 	addr        string
 	localdomain string
 	logLv       string
+	hubID       string
 }
 
 var VERSION = "dev"
@@ -48,6 +51,7 @@ func init() {
 	f.StringVar(&args.hello, "hello", "webdav://{{.host}}.lo.shynome.com:4349{{.path}}", "")
 	f.StringVar(&args.localdomain, "localdomain", ".lo.shynome.com", "")
 	f.StringVar(&args.logLv, "log", defaultLogLv, "日志输出等级: 0 - 不输出; 1 - Error; 11 - Info; 111 - Debug")
+	f.StringVar(&args.hubID, "hub-id", "", "是否其用hub-id, 避免服务器上的文件被探测. 0 关闭")
 }
 
 var tracer = otel.Tracer("lcode-hub")
@@ -67,6 +71,24 @@ func main() {
 	To(os.MkdirAll(lcodeDir, os.ModePerm))
 	db := To1(xorm.NewEngine("sqlite", filepath.Join(lcodeDir, "lcode.db")))
 	To(hub.Sync(db))
+	To(db.Sync2(new(Config)))
+
+	if args.hubID != "0" {
+		nf := flag.NewFlagSet("locde-hub@id-get", flag.ContinueOnError)
+		nf.SetOutput(&bytes.Buffer{})
+		if len(args.hubID) == 0 {
+			v := To1(getConfig(db, "hub-id", func() string {
+				b := make([]byte, 3)
+				rand.Read(b)
+				s := hex.EncodeToString(b)
+				return s
+			}))
+			args.hubID = v
+		}
+		nf.StringVar(&args.hello, "hello", fmt.Sprintf("webdav://{{.host}}-%s.lo.shynome.com:4349{{.path}}", args.hubID), "")
+		nf.StringVar(&args.localdomain, "localdomain", fmt.Sprintf("-%s.lo.shynome.com", args.hubID), "")
+		nf.Parse(os.Args[1:])
+	}
 
 	l := To1(net.Listen("tcp", args.addr))
 	defer l.Close()
