@@ -11,11 +11,11 @@ var changeDefaultArgs int = func() int {
 	return 1
 }()
 
-func TestMain(m *testing.T) {
+func TestProgram(t *testing.T) {
 	var running string
 	f.StringVar(&running, "test.run", "", "golang test")
 	f.Parse(os.Args[1:])
-	if running != "^TestMain$" {
+	if running != "^TestProgram$" {
 		return
 	}
 	main()
