@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.1.6] - 2023-01-17
+
+- 将 hid 添加到命令参数中, 方便与其他编辑器集成(指[vscode lcode hub](https://github.com/vscode-lcode/hub))
+
 ## [2.1.5] - 2023-01-16
 
 ### Fix
