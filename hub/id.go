@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/lainio/err2"
@@ -17,7 +18,8 @@ var _ bash.IDGenerator = (*Hub)(nil).IDGenerator
 
 func (hub *Hub) IDGenerator(c bash.LcodeClient) (id bash.ID, err error) {
 	defer err2.Handle(&err)
-	host := parseIDRaw(c.RawID())
+	rawID := strings.ToLower(c.RawID())
+	host := parseIDRaw(rawID)
 	if host.No == 0 {
 		To(hub.addHost(&host))
 	}

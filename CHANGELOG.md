@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.1.7] - 2023-01-17
+
+- 修复 namespace 含大写字母时无法访问的问题. 原因是因为域名会自动转小写导致无法找到对应的 host, 所以将 id 统一小写化
+
 ## [2.1.6] - 2023-01-17
 
 - 将 hid 添加到命令参数中, 方便与其他编辑器集成(指[vscode lcode hub](https://github.com/vscode-lcode/hub))
