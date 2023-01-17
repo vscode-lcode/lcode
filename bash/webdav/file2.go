@@ -27,16 +27,14 @@ type File struct {
 	name   string
 	cursor int64
 
-	locker *sync.RWMutex
-	stat   fs.FileInfo
+	statusInit *sync.Once
+	stat       fs.FileInfo
 
-	readerInit    *sync.Once
-	readerInitErr error
-	reader        net.Conn
+	readerInit *sync.Once
+	reader     net.Conn
 
-	writerInit    *sync.Once
-	writerInitErr error
-	writer        net.Conn
+	writerInit *sync.Once
+	writer     net.Conn
 
 	no uint64
 }
@@ -58,7 +56,7 @@ func OpenFile(c *Client, filename string) *File {
 		c:    c,
 		name: filename,
 
-		locker:     &sync.RWMutex{},
+		statusInit: &sync.Once{},
 		readerInit: &sync.Once{},
 		writerInit: &sync.Once{},
 	}
@@ -71,7 +69,7 @@ func (f *File) Close() error {
 		f.reader.Close()
 	}
 	if f.writer != nil {
-		defer f.c.statsLocker.Delete(f.name)
+		defer f.c.statsCache.Delete(f.name)
 		f.writer.Close()
 		time.Sleep(200 * time.Millisecond) //等200ms, 让dd把末尾的输入内容写入到文件内
 	}
@@ -88,19 +86,21 @@ func (f *File) Read(p []byte) (n int, err error) {
 		err0.Record(&err, span)
 	})
 
-	stat := To1(f.Stat())
+	stat := To1(f._Stat())
 	if stat.IsDir() {
 		return 0, io.EOF
 	}
 	f.readerInit.Do(func() {
 		cmd := fmt.Sprintf("dd if=%s skip=%d", shellescape.Quote(f.name), f.cursor)
 		cmd = fmt.Sprintf("%s %s", cmd, "iflag=skip_bytes")
-		f.reader, f.readerInitErr = f.c.Exec(cmd)
+		f.reader, err = f.c.Exec(cmd)
 	})
-	if f.readerInitErr != nil {
-		err = f.readerInitErr
+	if err != nil {
+		f.readerInit = &sync.Once{}
 		return
 	}
+	f.reader.SetReadDeadline(time.Now().Add(5 * time.Second))
+	defer f.reader.SetReadDeadline(time.Time{})
 	n, err = f.reader.Read(p)
 	f.cursor += int64(n)
 	return
@@ -114,12 +114,14 @@ func (f *File) Write(p []byte) (n int, err error) {
 	f.writerInit.Do(func() {
 		cmd := fmt.Sprintf("dd of=%s seek=%d", shellescape.Quote(f.name), f.cursor)
 		cmd = fmt.Sprintf("%s %s", cmd, "oflag=seek_bytes")
-		f.writer, f.writerInitErr = f.c.Exec(cmd)
+		f.writer, err = f.c.Exec(cmd)
 	})
-	if f.writerInitErr != nil {
-		err = f.writerInitErr
+	if err != nil {
+		f.writerInit = &sync.Once{}
 		return
 	}
+	f.writer.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	defer f.writer.SetWriteDeadline(time.Time{})
 	n, err = f.writer.Write(p)
 	f.cursor += int64(n)
 	return
@@ -137,7 +139,7 @@ func (f *File) Seek(offset int64, whence int) (n int64, err error) {
 	case io.SeekCurrent:
 		f.cursor += offset
 	case io.SeekEnd:
-		stat := To1(f.Stat())
+		stat := To1(f._Stat())
 		f.cursor = stat.Size() + offset
 	}
 	n = f.cursor

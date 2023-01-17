@@ -22,21 +22,11 @@ func (f *File) Readdir(count int) (files []fs.FileInfo, err error) {
 	defer span.End()
 	defer err0.Record(&err, span)
 
-	list := To1(f.readdir(count))
-	var wg sync.WaitGroup
-	wg.Add(len(list))
-	for _, stat := range list {
-		go func(stat fs.FileInfo) {
-			defer wg.Done()
-			fname := filepath.Join(f.name, stat.Name())
-			sl := f.c.StatLocker(fname)
-			sl.locker.Lock()
-			defer sl.locker.Unlock()
-			sl.stat = stat
-		}(stat)
+	files = To1(f.readdir(count))
+	for _, stat := range files {
+		fname := filepath.Join(f.name, stat.Name())
+		f.c.statsCache.Set(fname, stat, 0)
 	}
-	wg.Wait()
-	files = list
 	return
 }
 
@@ -67,16 +57,14 @@ func (f *File) Stat() (finfo fs.FileInfo, err error) {
 	return f.c.Stat(context.Background(), f.name)
 }
 func (f *File) _Stat() (finfo fs.FileInfo, err error) {
-	f.locker.RLock()
-	finfo = f.stat
-	f.locker.RUnlock()
-	if finfo != nil {
+	f.statusInit.Do(func() {
+		f.stat, err = f._GetStat()
+	})
+	if err != nil {
+		f.statusInit = &sync.Once{}
 		return
 	}
-	f.locker.Lock()
-	defer f.locker.Unlock()
-	finfo, err = f._GetStat()
-	f.stat = finfo
+	finfo = f.stat
 	return
 }
 func (f *File) _GetStat() (finfo fs.FileInfo, err error) {

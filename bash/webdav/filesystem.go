@@ -3,12 +3,9 @@ package webdav
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
-	"sync"
 
 	"github.com/alessio/shellescape"
-	"github.com/jellydator/ttlcache/v3"
 	. "github.com/lainio/err2/try"
 	"github.com/vscode-lcode/lcode/v2/util/err0"
 	"golang.org/x/net/webdav"
@@ -38,7 +35,7 @@ func (c *Client) RemoveAll(ctx context.Context, name string) (err error) {
 	defer span.End()
 	defer err0.Record(&err, span)
 
-	defer c.statsLocker.DeleteAll()
+	defer c.statsCache.DeleteAll()
 
 	cmd := fmt.Sprintf("rm -rf %s", shellescape.Quote(name))
 	To(c.ExecNoreply(cmd))
@@ -49,8 +46,8 @@ func (c *Client) Rename(ctx context.Context, oldName, newName string) (err error
 	defer span.End()
 	defer err0.Record(&err, span)
 
-	defer c.statsLocker.Delete(oldName)
-	defer c.statsLocker.Delete(newName)
+	defer c.statsCache.Delete(oldName)
+	defer c.statsCache.Delete(newName)
 
 	cmd := fmt.Sprintf("mv %s %s", shellescape.Quote(oldName), shellescape.Quote(newName))
 	To(c.ExecNoreply(cmd))
@@ -62,37 +59,17 @@ func (c *Client) Stat(ctx context.Context, name string) (f os.FileInfo, err erro
 	defer span.End()
 	defer err0.Record(&err, span)
 
-	sl := c.StatLocker(name)
-	sl.locker.RLock()
-	f = sl.stat
-	sl.locker.RUnlock()
-	if f != nil {
+	item := c.statsCache.Get(name)
+	if item != nil {
+		f = item.Value()
 		return
 	}
 
-	sl.locker.Lock()
-	defer sl.locker.Unlock()
 	f, err = OpenFile(c, name)._Stat()
 	if err != nil {
 		return
 	}
-	sl.stat = f
+	c.statsCache.Set(name, f, 0)
 
-	return
-}
-
-type StatWithLocker struct {
-	locker *sync.RWMutex
-	stat   fs.FileInfo
-}
-
-func (client *Client) StatLocker(name string) (sl *StatWithLocker) {
-	item := client.statsLocker.Get(name)
-	if item == nil {
-		sl = &StatWithLocker{locker: &sync.RWMutex{}, stat: nil}
-		client.statsLocker.Set(name, sl, ttlcache.DefaultTTL)
-	} else {
-		sl = item.Value()
-	}
 	return
 }

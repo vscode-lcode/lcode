@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -41,7 +42,7 @@ type Client struct {
 	Ctx    context.Context
 	closed *multicast.Channel[any]
 
-	statsLocker *ttlcache.Cache[string, *StatWithLocker]
+	statsCache *ttlcache.Cache[string, fs.FileInfo]
 
 	ServerAddr string
 }
@@ -54,8 +55,8 @@ func NewClient(conn net.Conn) *Client {
 		),
 		closed: multicast.New[any](),
 
-		statsLocker: ttlcache.New(
-			ttlcache.WithTTL[string, *StatWithLocker](2 * time.Second),
+		statsCache: ttlcache.New(
+			ttlcache.WithTTL[string, fs.FileInfo](5 * time.Second),
 		),
 	}
 	c.tasks.OnEviction(func(ctx context.Context, er ttlcache.EvictionReason, i *ttlcache.Item[string, chan net.Conn]) {
@@ -78,7 +79,7 @@ func (c *Client) Open(r *bufio.Reader, version string, id string) (err error) {
 	To(c.initID(r))
 	To(c.initPWD(r))
 	go c.tasks.Start()
-	go c.statsLocker.Start()
+	go c.statsCache.Start()
 
 	span.SetAttributes(
 		attribute.String("host", c.ID),
@@ -217,8 +218,8 @@ func (c *Client) Close() {
 	c.tasks.DeleteAll()
 	c.tasks.Stop()
 
-	c.statsLocker.DeleteAll()
-	c.statsLocker.Stop()
+	c.statsCache.DeleteAll()
+	c.statsCache.Stop()
 
 	c.conn.Close()
 	c.closed.Close()
