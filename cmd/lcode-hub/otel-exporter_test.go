@@ -16,7 +16,9 @@ func TestExporter(t *testing.T) {
 
 	tracer := otel.Tracer("test")
 
-	_, span := tracer.Start(context.Background(), "err")
+	p, _ := tracer.Start(context.Background(), "parent")
+
+	_, span := tracer.Start(p, "err")
 	span.SetStatus(codes.Error, "some err string")
 	span.End()
 
