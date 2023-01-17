@@ -33,6 +33,12 @@ func TestWebdavStat(t *testing.T) {
 	t.Log(fname, fname2)
 }
 
+func BenchmarkStat(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = client.Stat(context.Background(), fmt.Sprintf("/tmp/noooo-%d", i))
+	}
+}
+
 func TestWebdavReaddir(t *testing.T) {
 	f := "/home/shynome/aa"
 	fs := webdav.Dir("/")
