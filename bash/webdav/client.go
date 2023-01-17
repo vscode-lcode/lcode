@@ -205,6 +205,9 @@ func (c *Client) Targets() []string {
 				if !strings.HasPrefix(fullpath, "/") {
 					fullpath = filepath.Join(c.PWD, fullpath)
 				}
+				if stat.IsDir() {
+					fullpath = strings.TrimSuffix(fullpath, "/")
+				}
 				targets = append(targets, fullpath)
 			}
 		}
