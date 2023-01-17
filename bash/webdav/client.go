@@ -73,6 +73,7 @@ func (c *Client) Open(r *bufio.Reader, version string, id string) (err error) {
 	ctx, span := tracer.Start(context.Background(), "client open")
 	c.Ctx = ctx
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	To(c.parseArgs(r, version))
 	To(c.initServerAddr(r, id))
@@ -106,6 +107,7 @@ func (c *Client) parseArgs(r *bufio.Reader, version string) (err error) {
 	_, span := tracer.Start(c.Ctx, "client parse lcode args")
 	defer span.End()
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	To1(io.WriteString(c.conn, "echo $@\n"))
 	line, _ := To2(r.ReadLine())
@@ -157,6 +159,7 @@ func (c *Client) initID(r *bufio.Reader) (err error) {
 	_, span := tracer.Start(c.Ctx, "client init id")
 	defer span.End()
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	cmd := "echo $(2>/dev/null dd if=~/.lcode-id || echo 0)-$(2>/dev/null dd if=/proc/sys/kernel/hostname)\n"
 	To1(io.WriteString(c.conn, cmd))
@@ -175,6 +178,7 @@ func (c *Client) initPWD(r *bufio.Reader) (err error) {
 	_, span := tracer.Start(c.Ctx, "client init pwd")
 	defer span.End()
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	To1(io.WriteString(c.conn, "pwd\n"))
 	pwd, _ := To2(r.ReadLine())

@@ -111,6 +111,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	_, span := tracer.Start(f.Ctx, "file write")
 	defer span.End()
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	f.writerInit.Do(func() {
 		cmd := fmt.Sprintf("dd of=%s seek=%d", shellescape.Quote(f.name), f.cursor)

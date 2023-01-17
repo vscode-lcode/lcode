@@ -21,6 +21,7 @@ func (f *File) Readdir(count int) (files []fs.FileInfo, err error) {
 	_, span := tracer.Start(f.Ctx, "file readdir")
 	defer span.End()
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	files = To1(f.readdir(count))
 	for _, stat := range files {

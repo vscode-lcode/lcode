@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/alessio/shellescape"
+	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
 	"github.com/vscode-lcode/lcode/v2/util/err0"
 	"golang.org/x/net/webdav"
@@ -17,6 +18,7 @@ func (c *Client) Mkdir(ctx context.Context, name string, perm os.FileMode) (err 
 	_, span := tracer.Start(c.Ctx, "fs mkdir")
 	defer span.End()
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	cmd := fmt.Sprintf("mkdir -p %s", shellescape.Quote(name))
 	To(c.ExecNoreply(cmd))
@@ -30,6 +32,7 @@ func (c *Client) RemoveAll(ctx context.Context, name string) (err error) {
 	_, span := tracer.Start(c.Ctx, "fs remove all")
 	defer span.End()
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	defer c.statsCache.DeleteAll()
 
@@ -41,6 +44,7 @@ func (c *Client) Rename(ctx context.Context, oldName, newName string) (err error
 	_, span := tracer.Start(c.Ctx, "fs rename")
 	defer span.End()
 	defer err0.Record(&err, span)
+	defer err2.Handle(&err)
 
 	defer c.statsCache.Delete(oldName)
 	defer c.statsCache.Delete(newName)
@@ -52,7 +56,7 @@ func (c *Client) Rename(ctx context.Context, oldName, newName string) (err error
 
 func (c *Client) Stat(ctx context.Context, name string) (f os.FileInfo, err error) {
 	item := c.statsCache.Get(name)
-	if item != nil {
+	if item != nil && !item.IsExpired() {
 		f = item.Value()
 		return
 	}
