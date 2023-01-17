@@ -9,6 +9,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/SierraSoftworks/multicast/v2"
 	"github.com/google/uuid"
@@ -66,12 +67,15 @@ func (sh *Bash) serve(conn net.Conn) (err error) {
 		conn.Close()
 	})
 
+	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	r := bufio.NewReader(conn)
 	header, _ := To2(r.ReadLine())
 	if len(header) == 0 {
 		err = fmt.Errorf("unknown connect")
 		return
 	}
+	conn.SetReadDeadline(time.Time{})
+
 	switch v := string(header[0]); v {
 	case "-":
 		defer conn.Close()
