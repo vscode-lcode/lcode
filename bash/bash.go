@@ -3,7 +3,6 @@ package bash
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -17,7 +16,6 @@ import (
 	"github.com/lainio/err2"
 	. "github.com/lainio/err2/try"
 	"github.com/vscode-lcode/lcode/v2/bash/webdav"
-	"github.com/vscode-lcode/lcode/v2/util/err0"
 	"go.opentelemetry.io/otel"
 )
 
@@ -60,9 +58,6 @@ func (sh *Bash) Serve(l net.Listener) (err error) {
 }
 
 func (sh *Bash) serve(conn net.Conn) (err error) {
-	_, span := tracer.Start(context.Background(), "serve conn")
-	defer span.End()
-	defer err0.Record(&err, span)
 	defer err2.Handle(&err, func() {
 		conn.Close()
 	})
