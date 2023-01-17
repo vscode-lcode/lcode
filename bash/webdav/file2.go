@@ -48,6 +48,7 @@ func OpenFile(c *Client, filename string) *File {
 	span.SetAttributes(
 		attribute.String("filepath", filename),
 	)
+	span.AddEvent("nolog")
 	return &File{
 		Ctx: ctx,
 
@@ -86,7 +87,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 		err0.Record(&err, span)
 	})
 
-	stat := To1(f._Stat())
+	stat := To1(f.Stat())
 	if stat.IsDir() {
 		return 0, io.EOF
 	}
@@ -139,7 +140,7 @@ func (f *File) Seek(offset int64, whence int) (n int64, err error) {
 	case io.SeekCurrent:
 		f.cursor += offset
 	case io.SeekEnd:
-		stat := To1(f._Stat())
+		stat := To1(f.Stat())
 		f.cursor = stat.Size() + offset
 	}
 	n = f.cursor
