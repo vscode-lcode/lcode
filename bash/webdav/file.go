@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/alessio/shellescape"
 	"github.com/lainio/err2"
@@ -44,6 +45,7 @@ func (f *File) readdir(n int) (files []fs.FileInfo, err error) {
 	cmd := fmt.Sprintf("TZ=UTC0 ls -Al --full-time %s", shellescape.Quote(f.name))
 	conn := To1(f.c.Exec(cmd))
 	defer conn.Close()
+	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	r := bufio.NewReader(conn)
 	for {
 		line, _, err := r.ReadLine()
@@ -90,6 +92,7 @@ func (f *File) _GetStat() (finfo fs.FileInfo, err error) {
 	cmd := fmt.Sprintf("TZ=UTC0 ls -Ald --full-time %s", shellescape.Quote(f.name))
 	conn := To1(f.c.Exec(cmd))
 	defer conn.Close()
+	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	r := bufio.NewReader(conn)
 	line, _, err := r.ReadLine()
 	if IsEOF(err) {
