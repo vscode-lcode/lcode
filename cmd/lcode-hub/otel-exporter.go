@@ -126,7 +126,10 @@ func (log ConsoleLogExporter) shouldLog(span sdktrace.ReadOnlySpan) bool {
 	}
 	if _, onStart := span.(sdktrace.ReadWriteSpan); !onStart { // onEnd
 		for _, ev := range span.Events() {
-			if ev.Name == err0.TheLogHasBeenOutput {
+			switch ev.Name {
+			case err0.TheLogHasBeenOutput:
+				return false
+			case "nolog":
 				return false
 			}
 		}
@@ -189,8 +192,8 @@ func (log ConsoleLogExporter) PrintlnSpan(span sdktrace.ReadOnlySpan) (err error
 	if onEnd := !onStart; onEnd {
 		endStr = " end\n"
 	}
+	info += endStr
 
 	To1(io.WriteString(output, info))
-	To1(io.WriteString(output, endStr))
 	return
 }
