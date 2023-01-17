@@ -23,10 +23,6 @@ func (c *Client) Mkdir(ctx context.Context, name string, perm os.FileMode) (err 
 	return
 }
 func (c *Client) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (f webdav.File, err error) {
-	_, span := tracer.Start(c.Ctx, "fs openfile")
-	defer span.End()
-	defer err0.Record(&err, span)
-
 	f = OpenFile(c, name)
 	return
 }
@@ -55,10 +51,6 @@ func (c *Client) Rename(ctx context.Context, oldName, newName string) (err error
 }
 
 func (c *Client) Stat(ctx context.Context, name string) (f os.FileInfo, err error) {
-	_, span := tracer.Start(c.Ctx, "fs stat")
-	defer span.End()
-	defer err0.Record(&err, span)
-
 	item := c.statsCache.Get(name)
 	if item != nil {
 		f = item.Value()
