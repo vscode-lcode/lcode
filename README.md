@@ -1,3 +1,7 @@
+## Archive
+
+v3 move to [lcode-hub](https://github.com/vscode-lcode/lcode-hub)
+
 ## 简介
 
 webdav server over bash
